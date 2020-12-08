@@ -26,11 +26,22 @@ class FlagSweep(Board):
                         click_check = True
         return(click_check)
 
+    def adj_overlap(self):
+        for square in [s for s in self.graph.values() if s.number > 0 and s.cover == False]:
+            rem_mines = square.number - len([s.loc for s in square.adj if s.flag==True])
+            square_set = set([s for s in square.adj if s.cover==True and s.flag==False])
+            for adj in [s for s in square.adj if s.cover==False and s.number>0]:
+                adj_square_set = set([s for s in adj.adj if s.cover==True and s.flag==False])
+                adj_rem_mines = adj.number - len([s for s in adj.adj if s.flag==True])
+                if adj_rem_mines == rem_mines and adj_square_set.issubset(square_set):
+                    for s in square_set - adj_square_set:
+                        self.click(s.loc[0], s.loc[1])
+
+
     def execute_flagsweep(self):
         click_check = True
         i = 0
         while click_check:
-            print(f"flagsweep: {i}")
             i+=1
             self.flag()
             if not self.sweep():

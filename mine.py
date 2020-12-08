@@ -4,7 +4,7 @@ import pandas as pd
 class Square:
     def __init__(self, y, x, adj=[], number=0, mine=False, cover=True, flag=False):
         self.loc = (y,x)
-        self.adj = []
+        self.adj = set()
         self.number = number
         self.mine = mine
         self.cover = cover
@@ -30,7 +30,7 @@ class Board:
         for loc in self.graph:
             for dis in [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]:
                 if loc[0]+dis[0] in range(self.height) and loc[1]+dis[1] in range(self.width):
-                    self.graph[loc].adj.append(self.graph[(loc[0]+dis[0],loc[1]+dis[1])])
+                    self.graph[loc].adj.add(self.graph[(loc[0]+dis[0],loc[1]+dis[1])])
         
         start_click_condition = [(y_click,x_click)]
         for adj in self.graph[(y_click,x_click)].adj:

@@ -42,7 +42,7 @@ class MinePage(tk.Frame):
         start_loc_entry = tk.Entry(self,width=5,font=24,textvariable=self.start_loc)
         start_loc_entry.grid(row=1,column=5,columnspan=3)
 
-        step_button = tk.Button(self, text='Step ->',command=lambda: self.flagsweep_step())
+        step_button = tk.Button(self, text='Step ->',command=lambda: self.adj_overlap_step())
         step_button.grid(row=1,column=8,columnspan=2)
 
         reset_button = tk.Button(self, text="Reset",command=lambda: self.reset())
@@ -76,6 +76,17 @@ class MinePage(tk.Frame):
             self.board.flag()
         else:
             self.board.sweep()
+        self.set_squares()
+        self.step_count += 1
+
+    def adj_overlap_step(self):
+        if self.step_count == 0:
+            self.board = FlagSweep(self.height.get(),self.width.get(),self.mine_num.get())
+            loc = self.start_loc.get()
+            self.board.set_graph(int(loc[0]),int(loc[-1]))
+            self.init_squares()
+        else:
+            self.board.adj_overlap()
         self.set_squares()
         self.step_count += 1
 
