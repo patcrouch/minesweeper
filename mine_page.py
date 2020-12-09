@@ -72,6 +72,10 @@ class MinePage(tk.Frame):
             self.can_dict[loc].grid(row=loc[0],column=loc[1]+6)
 
     def step(self):
+        if self.board.game_status != 0:
+            self.reset()
+            self.board.game_status = 0
+            return
         if self.step_count == 0:
             self.board = FlagSweep(self.height.get(),self.width.get(),self.mine_num.get())
             loc = self.start_loc.get()
