@@ -23,30 +23,33 @@ class MinePage(tk.Frame):
 
     
         height_label = tk.Label(self, text="Height:")
-        height_label.grid(row=0,column=0,columnspan=2,sticky='nesw')
+        height_label.grid(row=0,column=0,columnspan=1,sticky='nesw')
         height_entry = tk.Entry(self,width=4,font=24,textvariable=self.height)
-        height_entry.grid(row=0,column=2,columnspan=2)
+        height_entry.grid(row=0,column=1,columnspan=1)
 
         width_label = tk.Label(self, text="Width:")
-        width_label.grid(row=0,column=4,columnspan=2,sticky='nesw')
+        width_label.grid(row=0,column=2,columnspan=1,sticky='nesw')
         width_entry = tk.Entry(self,width=4,font=24,textvariable=self.width)
-        width_entry.grid(row=0,column=6,columnspan=2,sticky='nesw')
+        width_entry.grid(row=0,column=3,columnspan=1,sticky='nesw')
 
         mine_label = tk.Label(self, text="Mines:")
-        mine_label.grid(row=0,column=8,columnspan=2,sticky='nesw')
+        mine_label.grid(row=0,column=4,columnspan=1,sticky='nesw')
         mine_entry = tk.Entry(self,width=4,font=24,textvariable=self.mine_num)
-        mine_entry.grid(row=0,column=10,columnspan=2,sticky='nesw')
+        mine_entry.grid(row=0,column=5,columnspan=1,sticky='nesw')
 
         start_loc_label = tk.Label(self, text="Starting Position y x:")
-        start_loc_label.grid(row=1,column=0,columnspan=5)
+        start_loc_label.grid(row=1,column=0,columnspan=1)
         start_loc_entry = tk.Entry(self,width=5,font=24,textvariable=self.start_loc)
-        start_loc_entry.grid(row=1,column=5,columnspan=3)
+        start_loc_entry.grid(row=1,column=1,columnspan=1)
 
-        step_button = tk.Button(self, text='Step ->',command=lambda: self.adj_overlap_step())
-        step_button.grid(row=1,column=8,columnspan=2)
+        step_button = tk.Button(self, text='Step ->',command=lambda: self.step())
+        step_button.grid(row=1,column=2,columnspan=1)
 
         reset_button = tk.Button(self, text="Reset",command=lambda: self.reset())
-        reset_button.grid(row=1,column=10,columnspan=2)
+        reset_button.grid(row=1,column=3,columnspan=1)
+
+        self.step_log = tk.Text(self, height=20, width=30, state=tk.DISABLED)
+        self.step_log.grid(row=2,column=0,rowspan=16,columnspan=6)
         
 
     def init_squares(self):
@@ -64,36 +67,50 @@ class MinePage(tk.Frame):
                 self.can_dict[loc]['bg'] = 'white'
             if self.board.graph[loc].flag == True:
                 self.can_dict[loc]['bg'] = 'blue'
-            self.can_dict[loc].grid(row=loc[0]+2,column=loc[1])
-      
-    def flagsweep_step(self):
+            self.can_dict[loc].grid(row=loc[0],column=loc[1]+6)
+
+    def step(self):
         if self.step_count == 0:
             self.board = FlagSweep(self.height.get(),self.width.get(),self.mine_num.get())
             loc = self.start_loc.get()
             self.board.set_graph(int(loc[0]),int(loc[-1]))
             self.init_squares()
-        elif self.step_count%2 == 1:
-            self.board.flag()
+            self.update_log(f"{self.step_count}: Initial Click")
         else:
-            self.board.sweep()
+            self.algorithm_operations()
         self.set_squares()
         self.step_count += 1
 
-    def adj_overlap_step(self):
-        if self.step_count == 0:
-            self.board = FlagSweep(self.height.get(),self.width.get(),self.mine_num.get())
-            loc = self.start_loc.get()
-            self.board.set_graph(int(loc[0]),int(loc[-1]))
-            self.init_squares()
-        else:
-            self.board.adj_overlap()
-        self.set_squares()
-        self.step_count += 1
+    def algorithm_operations(self):
+        self.board.flag()
+        if self.board.flag_check:
+            self.update_log(f"{self.step_count}: Flag")
+            return
+        self.board.sweep()
+        if self.board.sweep_check:
+            self.update_log(f"{self.step_count}: Sweep")
+            return
+        self.board.overlap_flag()
+        if self.board.overlap_flag_check:
+            self.update_log(f"{self.step_count}: Overlap Flag")
+            return
+        self.board.overlap_sweep()
+        if self.board.overlap_sweep_check:
+            self.update_log(f"{self.step_count}: Overlap Sweep")
+            return
+    
+    def update_log(self, desc):
+        self.step_log.configure(state = tk.NORMAL)
+        self.step_log.insert(tk.END, desc+'\n')
+        self.step_log.configure(state = tk.DISABLED)
 
     def reset(self):
         for can in self.can_dict.values():
             can.destroy()
         self.can_dict = {}
         self.step_count = 0
+        self.step_log.configure(state=tk.NORMAL)
+        self.step_log.delete(1.0, tk.END)
+        self.step_log.configure(state=tk.DISABLED)
 
 
