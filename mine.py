@@ -22,7 +22,7 @@ class Board:
         self.width = width
         self.mine_num = mine_num
         self.graph = {}
-        self.game_status = True
+        self.game_status = 0
     
     def set_graph(self, y_click, x_click):
         squares = [(y,x) for y in range(self.height) for x in range(self.width)]
@@ -51,7 +51,8 @@ class Board:
     def click(self, y, x):
         if self.graph[(y,x)].cover == True:
             if self.graph[(y,x)].number == -1:
-                self.game_status = False
+                self.graph[(y,x)].cover = False
+                self.game_status = 1
             elif self.graph[(y,x)].number == 0:
                 self.graph[(y,x)].cover = False
                 for s in self.graph[(y,x)].adj:

@@ -67,6 +67,8 @@ class MinePage(tk.Frame):
                 self.can_dict[loc]['bg'] = 'white'
             if self.board.graph[loc].flag == True:
                 self.can_dict[loc]['bg'] = 'blue'
+            if self.board.graph[loc].mine == True and self.board.graph[loc].cover == False:
+                self.can_dict[loc]['bg'] = 'red'
             self.can_dict[loc].grid(row=loc[0],column=loc[1]+6)
 
     def step(self):
@@ -78,6 +80,15 @@ class MinePage(tk.Frame):
             self.update_log(f"{self.step_count}: Initial Click")
         else:
             self.algorithm_operations()
+        self.board.check_win()
+        if self.board.game_status == 1:
+            self.update_log('GAME OVER')
+            for s in [s for s in self.board.graph.values() if s.mine==True and s.flag==False]:
+                s.cover = False
+        elif self.board.game_status == 2:
+            self.update_log('CONGRATS!')
+            for s in [s for s in self.board.graph.values() if s.mine==False and s.cover==True]:
+                s.cover = False
         self.set_squares()
         self.step_count += 1
 
@@ -98,6 +109,8 @@ class MinePage(tk.Frame):
         if self.board.overlap_sweep_check:
             self.update_log(f"{self.step_count}: Overlap Sweep")
             return
+        self.board.random_click()
+        self.update_log(f"{self.step_count}: Random Click")
     
     def update_log(self, desc):
         self.step_log.configure(state = tk.NORMAL)

@@ -1,4 +1,5 @@
 from mine import Board, Square
+import random
 
 class FlagSweep(Board):
     def __init__(self, height, length, mine_num):
@@ -57,7 +58,13 @@ class FlagSweep(Board):
                         self.click(s.loc[0], s.loc[1])
                         self.overlap_sweep_check = True
 
-    def execute_flagsweep(self):
-        self.flag()
-        self.sweep()
+    def random_click(self):
+        covered = [s for s in self.graph if self.graph[s].cover == True]
+        loc = random.choice(covered)
+        self.click(loc[0],loc[1])
+
+    def check_win(self):
+        if len([s for s in self.graph.values() if s.flag==True]) == self.mine_num:
+            self.game_status = 2
+
 
