@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from mine_page import MinePage
-from flag_sweep import FlagSweep
+from mine import Board
 
 '''
 Window class is baseline for all tkinter apps
@@ -25,12 +25,9 @@ class Window(tk.Tk):
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
-        self.flag_sweep = FlagSweep(12,12,15)
-        self.flag_sweep.set_graph(0,0)
-
         #dictionary of frames to be used in the main window
         self.frames = {}
-        mineframe = MinePage(self.flag_sweep, container, self)
+        mineframe = MinePage(container, self)
         self.frames['Mine'] = mineframe
         mineframe.grid(row=0, column=0, sticky='nsew')
 
