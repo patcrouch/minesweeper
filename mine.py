@@ -1,5 +1,6 @@
 import random
 import pandas as pd
+import copy
 
 class Square:
     def __init__(self, y, x, adj=[], number=0, mine=False, cover=True, flag=False):
@@ -9,6 +10,9 @@ class Square:
         self.mine = mine
         self.cover = cover
         self.flag = flag
+        self.adj_flags = set()
+        self.adj_covered = set()
+        self.adj_numbers = set()
     
     def __str__(self):
         fs = f"({self.loc}, {self.number}, mine:{self.mine}, cover:{self.cover}, flag:{self.flag})"
@@ -20,52 +24,67 @@ class Board:
             raise ValueError("Number of mines must not exceed number of cells.")
         self.height = height
         self.width = width
+        self.total_squares = height*width
         self.mine_num = mine_num
         self.graph = {}
-        self.game_status = 0
-        self.mine_list = []
-        self.uncovered_list = []
+        self.game_status = 0    #0: game in progress, 1: game lost, 2: game won
+        self.mine_set = set()
+        self.num_covered = height*width
         self.flag_check = False
         self.sweep_check = False
         self.overlap_flag_check = False
         self.overlap_sweep_check = False
     
     def set_graph(self, y_click, x_click):
-        squares = [(y,x) for y in range(self.height) for x in range(self.width)]
+        squares = set([(y,x) for y in range(self.height) for x in range(self.width)])
         self.graph = {(loc[0],loc[1]):Square(loc[0],loc[1]) for loc in squares}
         for loc in self.graph:
+            adj = set()
             for dis in [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]:
                 if loc[0]+dis[0] in range(self.height) and loc[1]+dis[1] in range(self.width):
-                    self.graph[loc].adj.add(self.graph[(loc[0]+dis[0],loc[1]+dis[1])])
+                    adj.add((loc[0]+dis[0],loc[1]+dis[1]))
+                    self.graph[loc].adj = adj
+                    self.graph[loc].adj_covered = adj.copy()
+
         
         start_click_condition = [(y_click,x_click)]
         for adj in self.graph[(y_click,x_click)].adj:
-            start_click_condition.append(adj.loc)
-        mine_list = squares
+            start_click_condition.append(adj)
+        mine_set = squares
         for pos in start_click_condition:
-            mine_list.remove(pos)
+            mine_set.remove(pos)
 
-        mines = random.sample(mine_list, self.mine_num)
+        mines = random.sample(mine_set, self.mine_num)
         for mine in mines:
             self.graph[mine].mine = True
             self.graph[mine].number = -1
         for square in self.graph.values():
             if square.mine == False:
-                square.number = len([s.loc for s in square.adj if s.mine==True])
-        self.click(y_click,x_click)
+                square.number = len([s for s in square.adj if self.graph[s].mine==True])
+        self.click((y_click,x_click))
 
-    def click(self, y, x):
-        if self.graph[(y,x)].cover == True:
-            if self.graph[(y,x)].number == -1:
-                self.graph[(y,x)].cover = False
+    def click(self, loc):
+        if self.graph[loc].cover:
+            if self.graph[loc].number == -1:
+                self.graph[loc].cover = False
                 self.game_status = 1
-            elif self.graph[(y,x)].number == 0:
-                self.graph[(y,x)].cover = False
-                for s in self.graph[(y,x)].adj:
-                    self.click(s.loc[0], s.loc[1])
+            elif self.graph[loc].number == 0:
+                self.graph[loc].cover = False
+                self.num_covered -= 1
+                for adj_loc in self.graph[loc].adj:
+                    self.graph[adj_loc].adj_covered.discard(loc)
+                    self.click(adj_loc)
                 return
             else:
-                self.graph[(y,x)].cover = False
+                square = self.graph[loc]
+                square.cover = False
+                self.num_covered -= 1
+                for adj_loc in square.adj:
+                    adj_square = self.graph[adj_loc]
+                    adj_square.adj_covered.discard(loc)
+                    adj_square.adj_numbers.add(loc)
+                    if adj_square.flag:
+                        square.adj_flags.add(adj_loc)
                 return
         else:
             return
@@ -73,54 +92,69 @@ class Board:
     def flag(self):
         self.flag_check = False
         for square in self.graph.values():
-            if square.number == len([s.loc for s in square.adj if s.cover==True]) and square.number != 0 and square.cover == False:
-                for adj in [s for s in square.adj if s.cover == True]:
-                    if adj.flag == False:
-                        adj.flag = True
-                        self.flag_check = True
+            if not square.cover and square.number>0:
+                adj_set = square.adj_covered
+                if square.number == len(adj_set):
+                    for adj_loc in adj_set:
+                        if not self.graph[adj_loc].flag:
+                            self.set_flag(adj_loc)
+                            self.flag_check = True
 
     def sweep(self):
         self.sweep_check = False
         for square in self.graph.values():
-            if square.number == len([s.loc for s in square.adj if s.flag==True]) and square.number != 0 and square.cover == False:
-                for adj_loc in [s.loc for s in square.adj if s.flag==False]:
-                    if self.graph[adj_loc].cover == True:
-                        self.click(adj_loc[0],adj_loc[1])
-                        self.sweep_check = True
-    
+            if square.number != 0 and not square.cover:
+                adj_flags = square.adj_flags
+                if square.number == len(adj_flags):
+                    for adj_loc in square.adj - adj_flags:
+                        if self.graph[adj_loc].cover:
+                            self.click(adj_loc)
+                            self.sweep_check = True
+
     def overlap_flag(self):
         self.overlap_flag_check = False
-        for square in [s for s in self.graph.values() if s.number > 0 and s.cover == False]:
-            rem_mines = square.number - len([s.loc for s in square.adj if s.flag==True])
-            square_set = set([s for s in square.adj if s.cover==True and s.flag==False])
-            for adj in [s for s in square.adj if s.cover==False and s.number>0]:
-                adj_rem_mines = adj.number - len([s for s in adj.adj if s.flag==True])
-                adj_square_set = set([s for s in adj.adj if s.cover==True and s.flag==False])
-                if len(square_set.intersection(adj_square_set))>adj_rem_mines and len(square_set-adj_square_set)+adj_rem_mines==rem_mines:
-                    for s in square_set - adj_square_set:
-                        s.flag = True
-                        self.overlap_flag_check = True
+        for square in self.graph.values():
+            if square.number > 0 and not square.cover:
+                rem_mines = square.number - len(square.adj_flags)
+                square_set = square.adj_covered - square.adj_flags
+                for adj_loc in square.adj_numbers.copy():
+                    adj_square = self.graph[adj_loc]
+                    adj_rem_mines = adj_square.number - len(adj_square.adj_flags)
+                    adj_square_set = adj_square.adj_covered - adj_square.adj_flags
+                    if len(square_set.intersection(adj_square_set))>adj_rem_mines and len(square_set-adj_square_set)+adj_rem_mines==rem_mines:
+                        for s in square_set - adj_square_set:
+                            self.set_flag(s)
+                            self.overlap_flag_check = True
 
     def overlap_sweep(self):
         self.overlap_sweep_check = False
-        for square in [s for s in self.graph.values() if s.number > 0 and s.cover == False]:
-            rem_mines = square.number - len([s.loc for s in square.adj if s.flag==True])
-            square_set = set([s for s in square.adj if s.cover==True and s.flag==False])
-            for adj in [s for s in square.adj if s.cover==False and s.number>0]:
-                adj_rem_mines = adj.number - len([s for s in adj.adj if s.flag==True])
-                adj_square_set = set([s for s in adj.adj if s.cover==True and s.flag==False])
-                if adj_rem_mines == rem_mines and adj_square_set.issubset(square_set):
-                    for s in square_set - adj_square_set:
-                        self.click(s.loc[0], s.loc[1])
-                        self.overlap_sweep_check = True
+        for square in self.graph.values():
+            if square.number > 0 and not square.cover:
+                rem_mines = square.number - len(square.adj_flags)
+                square_set = square.adj_covered - square.adj_flags
+                for adj_loc in square.adj_numbers.copy():
+                    adj_square = self.graph[adj_loc]
+                    adj_rem_mines = adj_square.number - len(adj_square.adj_flags)
+                    adj_square_set = adj_square.adj_covered - adj_square.adj_flags
+                    if adj_rem_mines == rem_mines and adj_square_set.issubset(square_set):
+                        for s in square_set - adj_square_set:
+                            self.click(s)
+                            self.overlap_sweep_check = True
     
     def random_click(self):
         covered = [s for s in self.graph if self.graph[s].cover==True and self.graph[s].flag==False]
         loc = random.choice(covered)
-        self.click(loc[0],loc[1])
+        self.click(loc)
+
+    def set_flag(self, loc):
+        square = self.graph[loc]
+        square.flag = True
+        for adj_loc in square.adj:
+            adj_square = self.graph[adj_loc]
+            adj_square.adj_flags.add(loc)
 
     def check_win(self):
-        if len([s for s in self.graph.values() if s.flag==True]) == self.mine_num:
+        if self.num_covered == self.mine_num:
             self.game_status = 2
 
     def print_graph(self):
@@ -129,8 +163,8 @@ class Board:
             df.loc[s.loc[0],s.loc[1]] = s.number
         print(df)
     
-    def print_cover(self):
+    def print_cover(self, graph):
         df = pd.DataFrame(index=range(self.height), columns=range(self.width))
-        for s in self.graph.values():
+        for s in graph.values():
             df.loc[s.loc[0],s.loc[1]] = s.cover
         print(df)
