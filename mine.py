@@ -34,6 +34,7 @@ class Board:
         self.sweep_check = False
         self.overlap_flag_check = False
         self.overlap_sweep_check = False
+        self.click_set = set()
     
     def set_graph(self, y_click, x_click):
         squares = set([(y,x) for y in range(self.height) for x in range(self.width)])
@@ -46,22 +47,23 @@ class Board:
                     self.graph[loc].adj = adj
                     self.graph[loc].adj_covered = adj.copy()
 
-        
-        start_click_condition = [(y_click,x_click)]
+        start_click_condition = set([(y_click,x_click)])
         for adj in self.graph[(y_click,x_click)].adj:
-            start_click_condition.append(adj)
-        mine_set = squares
+            start_click_condition.add(adj)
+        mine_locs = squares
         for pos in start_click_condition:
-            mine_set.remove(pos)
+            mine_locs.discard(pos)
 
-        mines = random.sample(mine_set, self.mine_num)
-        for mine in mines:
+        self.mine_set = random.sample(mine_locs, self.mine_num)
+        for mine in self.mine_set:
             self.graph[mine].mine = True
             self.graph[mine].number = -1
         for square in self.graph.values():
             if square.mine == False:
                 square.number = len([s for s in square.adj if self.graph[s].mine==True])
+
         self.click((y_click,x_click))
+        return self.reset_click_set()
 
     def click(self, loc):
         if self.graph[loc].cover:
@@ -70,6 +72,7 @@ class Board:
                 self.game_status = 1
             elif self.graph[loc].number == 0:
                 self.graph[loc].cover = False
+                self.click_set.add(loc)
                 self.num_covered -= 1
                 for adj_loc in self.graph[loc].adj:
                     self.graph[adj_loc].adj_covered.discard(loc)
@@ -78,6 +81,7 @@ class Board:
             else:
                 square = self.graph[loc]
                 square.cover = False
+                self.click_set.add(loc)
                 self.num_covered -= 1
                 for adj_loc in square.adj:
                     adj_square = self.graph[adj_loc]
@@ -88,8 +92,14 @@ class Board:
                 return
         else:
             return
+
+    def reset_click_set(self):
+        cs = self.click_set.copy()
+        self.click_set = set()
+        return cs
     
     def flag(self):
+        flagged = set()
         self.flag_check = False
         for square in self.graph.values():
             if not square.cover and square.number>0:
@@ -99,8 +109,11 @@ class Board:
                         if not self.graph[adj_loc].flag:
                             self.set_flag(adj_loc)
                             self.flag_check = True
+                            flagged.add(adj_loc)
+        return flagged
 
     def sweep(self):
+        swept = set()
         self.sweep_check = False
         for square in self.graph.values():
             if square.number != 0 and not square.cover:
@@ -109,9 +122,12 @@ class Board:
                     for adj_loc in square.adj - adj_flags:
                         if self.graph[adj_loc].cover:
                             self.click(adj_loc)
+                            swept |= self.reset_click_set()
                             self.sweep_check = True
+        return swept
 
     def overlap_flag(self):
+        flagged = set()
         self.overlap_flag_check = False
         for square in self.graph.values():
             if square.number > 0 and not square.cover:
@@ -125,8 +141,11 @@ class Board:
                         for s in square_set - adj_square_set:
                             self.set_flag(s)
                             self.overlap_flag_check = True
+                            flagged.add(s)
+        return flagged
 
     def overlap_sweep(self):
+        swept = set()
         self.overlap_sweep_check = False
         for square in self.graph.values():
             if square.number > 0 and not square.cover:
@@ -139,12 +158,15 @@ class Board:
                     if adj_rem_mines == rem_mines and adj_square_set.issubset(square_set):
                         for s in square_set - adj_square_set:
                             self.click(s)
+                            swept |= self.reset_click_set()
                             self.overlap_sweep_check = True
+        return swept
     
     def random_click(self):
         covered = [s for s in self.graph if self.graph[s].cover==True and self.graph[s].flag==False]
         loc = random.choice(covered)
         self.click(loc)
+        return loc, self.reset_click_set()
 
     def set_flag(self, loc):
         square = self.graph[loc]
