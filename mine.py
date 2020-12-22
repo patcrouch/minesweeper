@@ -12,6 +12,7 @@ class Square:
         self.cover = cover
         self.flag = flag
         self.adj = set()
+        self.sphere = set()
         self.adj_flags = set()
         self.adj_covered = set()
         self.adj_numbers = set()
@@ -45,6 +46,11 @@ class Board:
                     adj_set.add((loc[0]+dis[0],loc[1]+dis[1]))
                     self.graph[loc].adj = adj_set
                     self.graph[loc].adj_covered = adj_set.copy()    #adj_covered is initialized to contain all adj squares
+            sphere_set = set()
+            for dis in [(-2,-1),(-2,0),(-2,1),(-1,-2),(-1,2),(0,-2),(0,2),(1,-2),(1,2),(2,-1),(2,0),(2,1)]:
+                if loc[0]+dis[0] in range(self.height) and loc[1]+dis[1] in range(self.width):
+                    sphere_set.add((loc[0]+dis[0],loc[1]+dis[1]))
+                    self.graph[loc].sphere = adj_set.copy().union(sphere_set)
 
         #assures first click is an empty space
         start_click_condition = set([(y_click,x_click)])
@@ -89,12 +95,11 @@ class Board:
                 self.click_set.add(loc)
                 self.num_covered -= 1
                 #adj sets are updated for each adjacent square
-                for adj_loc in square.adj:
+                for adj_loc in square.sphere:
                     adj_square = self.graph[adj_loc]
-                    adj_square.adj_covered.discard(loc)
+                    if adj_loc in square.adj:
+                        adj_square.adj_covered.discard(loc)
                     adj_square.adj_numbers.add(loc)
-                    if adj_square.flag:
-                        square.adj_flags.add(adj_loc)
                 return
         else:
             return
