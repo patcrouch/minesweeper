@@ -30,29 +30,6 @@ class Window(tk.Tk):
         mineframe = MinePage(container, self)
         self.frames['Mine'] = mineframe
         mineframe.grid(row=0, column=0, sticky='nsew')
-
-
-        #sets starting frame page
-        #parent is container, controller is itself
-        #optiframe = OptimizerPage(self.optimizer, container, self)
-        #self.frames['Optimizer'] = optiframe
-
-        #grid allows for better placement of elements
-        #sticky parameter stretches everything to direction specified
-        #optiframe.grid(row=0, column=0, sticky='nsew')
-        #playerframe.grid(row=0, column=0, sticky='nsew')
-
-        '''
-        tabs = ttk.Notebook(container)
-
-        for frame in self.frames:
-            tabs.add(self.frames[frame], text = '   '+frame+'   ')
-
-        tabs.grid()
-
-        self.show_frame('Optimizer')
-        self.show_frame('Players')
-        '''
         self.show_frame('Mine')
 
     #moves given frame from frames to front
